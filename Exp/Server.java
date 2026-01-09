@@ -1,23 +1,27 @@
 package Exp;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
 
 public class Server 
 {
     ServerSocket Sc;
-    Socket socket;
+    String reqPath;
 
-    public void sendRes(String body)
+    HashMap map = new HashMap();
+
+    public void sendRes(String body,Socket socket)
     {
         try
         {
             OutputStream out = socket.getOutputStream();
             out.write("HTTP/1.1 200 OK\r\n".getBytes());
-            out.write("Content-Type: text/html\r\n".getBytes());
+            out.write("Content-Type: application/json\r\n".getBytes());
             out.write(("Content-Length: " + body.length() + "\r\n").getBytes());
             out.write("\r\n".getBytes());
             out.write(body.getBytes());
@@ -31,39 +35,53 @@ public class Server
     }
 
 
-    public Server(String body)
+
+
+    public void get(String path, String res)
+    {
+        System.out.println(path);
+        System.out.println(res);
+
+        map.put(path, res);
+    }
+
+    public void handleRequest(Socket socket) throws IOException
+    {        
+        BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        String line = reader.readLine();
+        reqPath = line.split(" ")[1];
+        
+        System.out.println(map.keySet());
+        System.out.println(map.containsKey(reqPath));
+        reqPath = reqPath.substring(1);
+        System.out.println(reqPath);
+
+        if(map.containsKey(reqPath))
+        {
+            System.out.println("yes we have a response");
+            sendRes(map.get(reqPath).toString(), socket);
+        }
+        else{
+            System.out.println("no response");
+            sendRes("{\"message\":\"not found\"}", socket);
+        }
+
+
+
+    }
+
+    public void Start(int portNo)
     {
         try
         {
-            Sc = new ServerSocket(9999);
-            System.out.println("Server started at port 9999...");
+            Sc = new ServerSocket(portNo);
+            System.out.println("Server started at port: "+portNo);
 
             while (true) 
             {
-                socket = Sc.accept();
+                Socket socket = Sc.accept();
                 System.out.println("Client connected");
-                // sendRes(body);
-                
-                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String line = reader.readLine();
-                String path = line.split(" ")[1];
-                System.out.println(path);
-
-                if (path.equals("/home"))
-                {
-                    sendRes("<h1>Hello By Home</h1> <ol> <li><a href='/home' >Home</a></li> <li><a href='/service' >Service</a></li> </ol> ");
-                }
-                else if(path.equals("/service"))
-                {
-                    sendRes("<h1>Hello By Service</h1> <ol> <li><a href='/home' >Home</a></li> <li><a href='/service' >Service</a></li> </ol> ");
-                }
-                else
-                {
-                    sendRes("<h1>404 Not Found</h1>");
-                }
-
-
-
+                handleRequest(socket);
             }
 
         }
